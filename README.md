@@ -24,17 +24,102 @@ En una instalación por defecto de Claroline Connect, al visitar la URL raíz co
 
 ---
 
-## Uso rápido (script automático)
+## Compatibilidad por sistema operativo
 
-### Requisitos
+Los scripts `setup.sh` y `verify.sh` son **bash** y usan `sshpass`. **No funcionan nativamente en Windows.** Elige la opción según tu OS:
+
+---
+
+### Linux (Ubuntu / Debian) — opción recomendada
+
+Instala `sshpass` y ejecuta los scripts directamente:
 
 ```bash
-# Ubuntu/Debian
-apt install sshpass
-
-# macOS
-brew install hudochenkov/sshpass/sshpass
+sudo apt install sshpass git
+git clone https://github.com/alexandervi1/claroline-public-home-setup.git
+cd claroline-public-home-setup
+chmod +x setup.sh verify.sh
+./setup.sh --host 192.168.1.10 --ssh-user avpro2029 ...
 ```
+
+---
+
+### macOS — opción recomendada
+
+Instala `sshpass` vía Homebrew y ejecuta igual que en Linux:
+
+```bash
+brew install hudochenkov/sshpass/sshpass
+git clone https://github.com/alexandervi1/claroline-public-home-setup.git
+cd claroline-public-home-setup
+chmod +x setup.sh verify.sh
+./setup.sh --host 192.168.1.10 --ssh-user avpro2029 ...
+```
+
+---
+
+### Windows — 3 alternativas
+
+#### Alternativa A: WSL (Windows Subsystem for Linux) — recomendada en Windows
+
+WSL permite correr bash nativo en Windows. Si no lo tienes instalado:
+
+```powershell
+# En PowerShell como Administrador
+wsl --install
+# Reinicia el equipo, luego abre la terminal Ubuntu
+```
+
+Una vez dentro de WSL:
+
+```bash
+sudo apt install sshpass git
+git clone https://github.com/alexandervi1/claroline-public-home-setup.git
+cd claroline-public-home-setup
+chmod +x setup.sh verify.sh
+./setup.sh --host 192.168.1.10 --ssh-user avpro2029 ...
+```
+
+#### Alternativa B: Git Bash + sshpass
+
+Git Bash incluye bash en Windows pero no tiene `sshpass`. Puedes descargarlo como binario:
+
+1. Descarga `sshpass` para Windows: https://github.com/eugeneniemand/sshpass/releases
+2. Copia el ejecutable a `C:\Program Files\Git\usr\bin\`
+3. Abre Git Bash y ejecuta los scripts normalmente
+
+#### Alternativa C: solo Python (sin bash) — funciona nativo en Windows
+
+Si no quieres instalar nada extra, puedes hacer los pasos individualmente:
+
+```powershell
+# 1. Instalar dependencia Python
+pip install paramiko
+
+# 2. Parchear platform_options.json via SSH
+python config\patch_platform_options.py --host 192.168.1.10 --user avpro2029 --password TuPassword
+
+# 3. Correr el SQL directamente en el servidor (conectate via SSH primero)
+#    mysql -u claroline_user -p claroline_db < sql/01_public_home_setup.sql
+
+# 4. Limpiar cache (en el servidor via SSH)
+#    sudo -u www-data php /var/www/claroline/bin/console cache:clear
+#    sudo -u www-data php /var/www/claroline/bin/console cache:warmup
+```
+
+> **Nota:** La Alternativa C no ejecuta `verify.sh`. Para verificar manualmente revisa la sección [Verificación manual](#verificación-manual) al final del README.
+
+---
+
+## Uso rápido (script automático)
+
+### Requisitos según tu OS
+
+| OS | Comando de instalación |
+|----|------------------------|
+| Ubuntu/Debian | `sudo apt install sshpass git` |
+| macOS | `brew install hudochenkov/sshpass/sshpass` |
+| Windows | Usar WSL (ver sección anterior) |
 
 ### Instalar
 
@@ -259,4 +344,42 @@ O directamente en la BD:
 
 ```sql
 UPDATE claro_workspace SET is_public = 1 WHERE slug = 'nombre-del-workspace';
+```
+
+---
+
+## Verificación manual
+
+Para usuarios de Windows que no pueden correr `verify.sh`, estas son las 7 comprobaciones equivalentes ejecutadas directamente en el servidor via SSH:
+
+```bash
+# 1. Verificar platform_options.json
+sudo cat /var/www/claroline/files/config/platform_options.json | python3 -c \
+  "import sys,json; d=json.load(sys.stdin); print('home.type:', d.get('home',{}).get('type'))"
+# Esperado: home.type: tool
+
+# 2. Verificar tab público en la BD
+mysql -u claroline_user -p claroline_db \
+  -e "SELECT id, context_name, type, class FROM claro_home_tab WHERE context_name='public';"
+# Esperado: una fila con class conteniendo WidgetsTab
+
+# 3. Verificar widget instance
+mysql -u claroline_user -p claroline_db \
+  -e "SELECT id, data_source_name FROM claro_widget_instance WHERE data_source_name='workspaces';"
+# Esperado: una fila con data_source_name=workspaces
+
+# 4. Verificar organización pública
+mysql -u claroline_user -p claroline_db \
+  -e "SELECT id, name, is_public FROM claro__organization;"
+# Esperado: is_public=1
+
+# 5. Verificar API home tool (reemplaza el dominio)
+curl -s -o /dev/null -w '%{http_code}' \
+  -H 'Host: claroline.tudominio.com' http://localhost/tool/open/home/public
+# Esperado: 200
+
+# 6. Verificar workspaces públicos disponibles
+curl -s -H 'Host: claroline.tudominio.com' http://localhost/data_source/workspaces/public | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print('totalResults:', d['totalResults'])"
+# Esperado: totalResults: 1 o más
 ```
