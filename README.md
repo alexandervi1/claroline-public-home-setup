@@ -24,112 +24,40 @@ En una instalación por defecto de Claroline Connect, al visitar la URL raíz co
 
 ---
 
-## Compatibilidad por sistema operativo
+## ¿Cuál es tu escenario?
 
-Los scripts `setup.sh` y `verify.sh` son **bash** y usan `sshpass`. **No funcionan nativamente en Windows.** Elige la opción según tu OS:
+Antes de seguir la guía, identifica en cuál de estos dos casos estás:
+
+| Escenario | Descripción |
+|-----------|-------------|
+| **A — Servidor remoto** | Claroline está instalado en un servidor Linux al que accedes por SSH (VPS, servidor propio, Hetzner, DigitalOcean, etc.) |
+| **B — Instalación local** | Claroline está instalado en tu propia máquina (Ubuntu de escritorio, macOS, o Windows con WSL/Docker) |
 
 ---
 
-### Linux (Ubuntu / Debian) — opción recomendada
+## Escenario A — Servidor remoto (acceso por SSH)
 
-Instala `sshpass` y ejecuta los scripts directamente:
+Tú estás en tu computadora y Claroline corre en otro servidor. Los scripts usan SSH para conectarse y hacer los cambios.
+
+### ¿Desde qué sistema puedo correr los scripts?
+
+| Tu sistema operativo | ¿Puedes usar setup.sh? | Cómo |
+|----------------------|------------------------|------|
+| **Ubuntu / Debian** | Sí | Directo |
+| **macOS** | Sí | Con Homebrew |
+| **Windows** | Solo con WSL | Instalar WSL primero |
+
+### Desde Ubuntu o Debian
 
 ```bash
 sudo apt install sshpass git
-git clone https://github.com/alexandervi1/claroline-public-home-setup.git
-cd claroline-public-home-setup
-chmod +x setup.sh verify.sh
-./setup.sh --host 192.168.1.10 --ssh-user avpro2029 ...
-```
 
----
-
-### macOS — opción recomendada
-
-Instala `sshpass` vía Homebrew y ejecuta igual que en Linux:
-
-```bash
-brew install hudochenkov/sshpass/sshpass
-git clone https://github.com/alexandervi1/claroline-public-home-setup.git
-cd claroline-public-home-setup
-chmod +x setup.sh verify.sh
-./setup.sh --host 192.168.1.10 --ssh-user avpro2029 ...
-```
-
----
-
-### Windows — 3 alternativas
-
-#### Alternativa A: WSL (Windows Subsystem for Linux) — recomendada en Windows
-
-WSL permite correr bash nativo en Windows. Si no lo tienes instalado:
-
-```powershell
-# En PowerShell como Administrador
-wsl --install
-# Reinicia el equipo, luego abre la terminal Ubuntu
-```
-
-Una vez dentro de WSL:
-
-```bash
-sudo apt install sshpass git
-git clone https://github.com/alexandervi1/claroline-public-home-setup.git
-cd claroline-public-home-setup
-chmod +x setup.sh verify.sh
-./setup.sh --host 192.168.1.10 --ssh-user avpro2029 ...
-```
-
-#### Alternativa B: Git Bash + sshpass
-
-Git Bash incluye bash en Windows pero no tiene `sshpass`. Puedes descargarlo como binario:
-
-1. Descarga `sshpass` para Windows: https://github.com/eugeneniemand/sshpass/releases
-2. Copia el ejecutable a `C:\Program Files\Git\usr\bin\`
-3. Abre Git Bash y ejecuta los scripts normalmente
-
-#### Alternativa C: solo Python (sin bash) — funciona nativo en Windows
-
-Si no quieres instalar nada extra, puedes hacer los pasos individualmente:
-
-```powershell
-# 1. Instalar dependencia Python
-pip install paramiko
-
-# 2. Parchear platform_options.json via SSH
-python config\patch_platform_options.py --host 192.168.1.10 --user avpro2029 --password TuPassword
-
-# 3. Correr el SQL directamente en el servidor (conectate via SSH primero)
-#    mysql -u claroline_user -p claroline_db < sql/01_public_home_setup.sql
-
-# 4. Limpiar cache (en el servidor via SSH)
-#    sudo -u www-data php /var/www/claroline/bin/console cache:clear
-#    sudo -u www-data php /var/www/claroline/bin/console cache:warmup
-```
-
-> **Nota:** La Alternativa C no ejecuta `verify.sh`. Para verificar manualmente revisa la sección [Verificación manual](#verificación-manual) al final del README.
-
----
-
-## Uso rápido (script automático)
-
-### Requisitos según tu OS
-
-| OS | Comando de instalación |
-|----|------------------------|
-| Ubuntu/Debian | `sudo apt install sshpass git` |
-| macOS | `brew install hudochenkov/sshpass/sshpass` |
-| Windows | Usar WSL (ver sección anterior) |
-
-### Instalar
-
-```bash
 git clone https://github.com/alexandervi1/claroline-public-home-setup.git
 cd claroline-public-home-setup
 chmod +x setup.sh verify.sh
 
 ./setup.sh \
-  --host 192.168.1.10 \
+  --host IP_DEL_SERVIDOR \
   --ssh-user avpro2029 \
   --ssh-pass TuPasswordSSH \
   --db-user claroline_user \
@@ -138,11 +66,214 @@ chmod +x setup.sh verify.sh
   --domain claroline.tudominio.com
 ```
 
-### Verificar
+### Desde macOS
+
+```bash
+# Instalar Homebrew si no lo tienes: https://brew.sh
+brew install hudochenkov/sshpass/sshpass git
+
+git clone https://github.com/alexandervi1/claroline-public-home-setup.git
+cd claroline-public-home-setup
+chmod +x setup.sh verify.sh
+
+./setup.sh \
+  --host IP_DEL_SERVIDOR \
+  --ssh-user avpro2029 \
+  --ssh-pass TuPasswordSSH \
+  --db-user claroline_user \
+  --db-pass "TuPasswordMySQL" \
+  --db-name claroline_db \
+  --domain claroline.tudominio.com
+```
+
+### Desde Windows (requiere WSL)
+
+`setup.sh` no funciona nativo en Windows porque usa `bash` y `sshpass`. La solución es WSL (Windows Subsystem for Linux), que instala Ubuntu dentro de Windows.
+
+**Paso 1 — Instalar WSL** (solo la primera vez, requiere reinicio):
+
+```powershell
+# Abrir PowerShell como Administrador y ejecutar:
+wsl --install
+# Reiniciar el equipo cuando lo pida
+```
+
+**Paso 2 — Abrir la terminal de Ubuntu** (aparece en el menú Inicio como "Ubuntu") y ejecutar:
+
+```bash
+sudo apt install sshpass git
+
+git clone https://github.com/alexandervi1/claroline-public-home-setup.git
+cd claroline-public-home-setup
+chmod +x setup.sh verify.sh
+
+./setup.sh \
+  --host IP_DEL_SERVIDOR \
+  --ssh-user avpro2029 \
+  --ssh-pass TuPasswordSSH \
+  --db-user claroline_user \
+  --db-pass "TuPasswordMySQL" \
+  --db-name claroline_db \
+  --domain claroline.tudominio.com
+```
+
+> **Nota:** WSL solo es necesario para correr `setup.sh` y `verify.sh`. Los cambios se aplican en el servidor remoto, no en tu máquina local.
+
+---
+
+## Escenario B — Instalación local (Claroline en tu propia máquina)
+
+Claroline corre en tu misma computadora. No necesitas SSH ni `sshpass`. Los comandos se corren directamente en la terminal.
+
+> **Importante:** Claroline Connect requiere Linux o macOS para funcionar. **No corre nativamente en Windows.** En Windows debes usar WSL o Docker (ver más abajo).
+
+### Ubuntu o Debian (local)
+
+Abre una terminal y ejecuta los pasos directamente:
+
+```bash
+# Paso 1: Parchear platform_options.json
+sudo python3 -c "
+import json
+path = '/var/www/claroline/files/config/platform_options.json'
+with open(path) as f:
+    d = json.load(f)
+d['home'] = {'type': 'tool', 'data': None}
+with open(path, 'w') as f:
+    json.dump(d, f, indent=4)
+print('OK: platform_options.json actualizado')
+"
+
+# Paso 2: Ejecutar el SQL
+git clone https://github.com/alexandervi1/claroline-public-home-setup.git
+mysql -u claroline_user -p claroline_db < claroline-public-home-setup/sql/01_public_home_setup.sql
+
+# Paso 3: Limpiar caché de Symfony
+cd /var/www/claroline
+sudo -u www-data php bin/console cache:clear
+sudo -u www-data php bin/console cache:warmup
+
+echo "Listo. Abre http://localhost en tu navegador."
+```
+
+### macOS (local)
+
+En macOS, Claroline generalmente corre via Docker o con PHP/nginx instalados con Homebrew. La ruta de instalación puede variar.
+
+```bash
+# Paso 1: Parchear platform_options.json
+# Reemplaza la ruta si tu instalación está en otro directorio
+PLATFORM_JSON="$HOME/claroline/files/config/platform_options.json"
+
+python3 -c "
+import json, os
+path = os.environ['PLATFORM_JSON']  if 'PLATFORM_JSON' in os.environ else '/var/www/claroline/files/config/platform_options.json'
+with open(path) as f:
+    d = json.load(f)
+d['home'] = {'type': 'tool', 'data': None}
+with open(path, 'w') as f:
+    json.dump(d, f, indent=4)
+print('OK:', path)
+" 
+
+# Paso 2: Ejecutar el SQL
+git clone https://github.com/alexandervi1/claroline-public-home-setup.git
+mysql -u claroline_user -p claroline_db < claroline-public-home-setup/sql/01_public_home_setup.sql
+
+# Paso 3: Limpiar caché
+cd /ruta/a/tu/claroline
+php bin/console cache:clear
+php bin/console cache:warmup
+```
+
+### Windows con WSL (local)
+
+Claroline no corre nativo en Windows. Si lo tienes instalado dentro de WSL (Ubuntu corriendo dentro de Windows), sigue los mismos pasos que Ubuntu local pero desde la terminal de WSL:
+
+```bash
+# Abrir terminal Ubuntu (WSL) y ejecutar exactamente igual que Ubuntu local
+sudo python3 -c "
+import json
+path = '/var/www/claroline/files/config/platform_options.json'
+with open(path) as f:
+    d = json.load(f)
+d['home'] = {'type': 'tool', 'data': None}
+with open(path, 'w') as f:
+    json.dump(d, f, indent=4)
+print('OK')
+"
+mysql -u claroline_user -p claroline_db < claroline-public-home-setup/sql/01_public_home_setup.sql
+cd /var/www/claroline
+sudo -u www-data php bin/console cache:clear
+sudo -u www-data php bin/console cache:warmup
+```
+
+### Windows con Docker (local)
+
+Si tienes Claroline corriendo en Docker:
+
+```bash
+# Identificar el nombre del contenedor PHP
+docker ps
+
+# Copiar el SQL al contenedor y ejecutarlo
+docker cp claroline-public-home-setup/sql/01_public_home_setup.sql claroline_php:/tmp/
+
+# Ejecutar dentro del contenedor
+docker exec claroline_php bash -c "
+  mysql -u claroline_user -pTuPassword claroline_db < /tmp/01_public_home_setup.sql
+"
+
+# Parchear platform_options.json dentro del contenedor
+docker exec claroline_php python3 -c "
+import json
+path = '/var/www/claroline/files/config/platform_options.json'
+with open(path) as f:
+    d = json.load(f)
+d['home'] = {'type': 'tool', 'data': None}
+with open(path, 'w') as f:
+    json.dump(d, f, indent=4)
+print('OK')
+"
+
+# Limpiar caché dentro del contenedor
+docker exec claroline_php bash -c "
+  cd /var/www/claroline &&
+  php bin/console cache:clear &&
+  php bin/console cache:warmup
+"
+```
+
+> **Nota Docker:** Los nombres de contenedor (`claroline_php`, etc.) dependen de tu `docker-compose.yml`. Ajústalos según tu instalación.
+
+---
+
+## Verificar que funcionó
+
+Después de aplicar los cambios, abre un navegador en modo incógnito y visita la URL de tu plataforma. Deberías ver la lista de workspaces públicos en la página de inicio.
+
+También puedes verificar con estos comandos (correrlos **en el servidor** o **dentro de WSL/Docker** según tu caso):
+
+```bash
+# Reemplaza el dominio por el tuyo (o usa localhost si es local)
+DOMAIN="claroline.tudominio.com"
+
+# 1. ¿Responde el home tool?
+curl -s -o /dev/null -w 'HTTP: %{http_code}\n' \
+  -H "Host: $DOMAIN" http://localhost/tool/open/home/public
+# Esperado: HTTP: 200
+
+# 2. ¿Devuelve workspaces?
+curl -s -H "Host: $DOMAIN" http://localhost/data_source/workspaces/public | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print('Workspaces:', d['totalResults'])"
+# Esperado: Workspaces: 1 (o más)
+```
+
+O usando el script incluido (solo Escenario A — servidor remoto):
 
 ```bash
 ./verify.sh \
-  --host 192.168.1.10 \
+  --host IP_DEL_SERVIDOR \
   --ssh-user avpro2029 \
   --ssh-pass TuPasswordSSH \
   --db-user claroline_user \
@@ -167,58 +298,6 @@ Salida esperada:
 
   Resultado: 7 OK  /  0 FAIL
 =============================================
-```
-
----
-
-## Paso a paso manual
-
-### 1. Modificar platform_options.json
-
-Archivo: `/var/www/claroline/files/config/platform_options.json`
-
-```json
-// ANTES
-"home": { "type": "none", "data": null }
-
-// DESPUÉS
-"home": { "type": "tool", "data": null }
-```
-
-O con el script Python incluido:
-
-```bash
-pip install paramiko
-python3 config/patch_platform_options.py \
-  --host 192.168.1.10 --user avpro2029 --password TuPassword
-```
-
-> **Por qué `"tool"` y no otro valor:** El código fuente de `PublicContext.php` tiene la verificación explícita `return 'tool' === $this->config->getParameter('home.type');`. Cualquier otro valor deja el contexto público desactivado.
-
-### 2. Ejecutar el SQL
-
-```bash
-mysql -u claroline_user -p claroline_db < sql/01_public_home_setup.sql
-```
-
-El script crea estos registros:
-
-```
-claro_home_tab                    tab con context_name='public', type='widgets'
-claro_home_tab_widgets            configuracion WidgetsTab vinculada al tab
-claro_widget_container            contenedor columna para los widgets
-claro_home_tab_widgets_containers relacion tab <-> contenedor (tabla pivote)
-claro_widget_instance             widget tipo 'list' con fuente 'workspaces'
-claro_widget_list                 opciones de visualizacion (paginado, 15/pag, etc.)
-claro__organization               is_public=1 en la organizacion por defecto
-```
-
-### 3. Limpiar caché
-
-```bash
-cd /var/www/claroline
-sudo -u www-data php bin/console cache:clear
-sudo -u www-data php bin/console cache:warmup
 ```
 
 ---
@@ -314,21 +393,21 @@ Usuario anonimo visita https://claroline.tudominio.com/
 ```
 claroline-public-home-setup/
 ├── README.md                       <- Esta guia
-├── setup.sh                        <- Script de instalacion automatica
-├── verify.sh                       <- Script de verificacion post-instalacion
+├── setup.sh                        <- Script automatico para servidor remoto (SSH)
+├── verify.sh                       <- Verificacion para servidor remoto (SSH)
 ├── sql/
-│   └── 01_public_home_setup.sql    <- SQL portable (widget ID dinamico)
+│   └── 01_public_home_setup.sql    <- SQL portable (funciona local y remoto)
 └── config/
     └── patch_platform_options.py   <- Script Python para parche via SSH
 ```
 
 ---
 
-## Prerequisitos del servidor destino
+## Prerequisitos
 
 - Claroline Connect 15.x instalado y funcionando
-- Usuario SSH con permisos `sudo`
-- MySQL/MariaDB accesible desde el servidor
+- Usuario con permisos `sudo` (local) o acceso SSH con sudo (remoto)
+- Acceso a MySQL/MariaDB con usuario que pueda hacer INSERT/UPDATE
 - PHP 8.x con `bin/console` operativo
 - Al menos un workspace con **Público = activado** en la administración de Claroline
 
@@ -344,42 +423,4 @@ O directamente en la BD:
 
 ```sql
 UPDATE claro_workspace SET is_public = 1 WHERE slug = 'nombre-del-workspace';
-```
-
----
-
-## Verificación manual
-
-Para usuarios de Windows que no pueden correr `verify.sh`, estas son las 7 comprobaciones equivalentes ejecutadas directamente en el servidor via SSH:
-
-```bash
-# 1. Verificar platform_options.json
-sudo cat /var/www/claroline/files/config/platform_options.json | python3 -c \
-  "import sys,json; d=json.load(sys.stdin); print('home.type:', d.get('home',{}).get('type'))"
-# Esperado: home.type: tool
-
-# 2. Verificar tab público en la BD
-mysql -u claroline_user -p claroline_db \
-  -e "SELECT id, context_name, type, class FROM claro_home_tab WHERE context_name='public';"
-# Esperado: una fila con class conteniendo WidgetsTab
-
-# 3. Verificar widget instance
-mysql -u claroline_user -p claroline_db \
-  -e "SELECT id, data_source_name FROM claro_widget_instance WHERE data_source_name='workspaces';"
-# Esperado: una fila con data_source_name=workspaces
-
-# 4. Verificar organización pública
-mysql -u claroline_user -p claroline_db \
-  -e "SELECT id, name, is_public FROM claro__organization;"
-# Esperado: is_public=1
-
-# 5. Verificar API home tool (reemplaza el dominio)
-curl -s -o /dev/null -w '%{http_code}' \
-  -H 'Host: claroline.tudominio.com' http://localhost/tool/open/home/public
-# Esperado: 200
-
-# 6. Verificar workspaces públicos disponibles
-curl -s -H 'Host: claroline.tudominio.com' http://localhost/data_source/workspaces/public | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); print('totalResults:', d['totalResults'])"
-# Esperado: totalResults: 1 o más
 ```
